@@ -2,6 +2,7 @@ const express = require("express")
 const https = require('https');
 const router = express.Router()
 const { ApiKeys } = require("../Models")
+const { vahan_details } = require("../Models")
 const { ApiLogs } = require("../Models")
 var jwt = require('jsonwebtoken');
 var bcrypt = require('bcryptjs');
@@ -341,6 +342,25 @@ router.post("/fetchKeys", fetchuser, async (req, res) => {
 //         res.status(500).send("Internal Server Error");
 //     }
 // });
+
+function formatDate(dateStr) {
+    if (!dateStr) return null;
+
+    const date = new Date(dateStr);
+    if (isNaN(date)) return null;
+
+    const months = [
+        "Jan","Feb","Mar","Apr","May","Jun",
+        "Jul","Aug","Sep","Oct","Nov","Dec"
+    ];
+
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+
+    return `${day}-${month}-${year}`;
+}
+
 router.put("/toggle-api-key", fetchuser, [
     body("passKey", "API must be valid").isLength({ min: 1 }),
     body("isEnable", "API key toggle failed").isBoolean()
@@ -650,6 +670,29 @@ const ulipUiError = async (urlArray, mybody, respBody, appliName, myKey, req) =>
 router.post("/ulipui/:ulipIs/:reqIs", fetchuser,fetchapiui, async (req, res) => {
 
     try {
+
+        const vehicleDetails = await vahan_details.findOne({ where: { rc_regn_no: req.body.vehiclenumber } ,raw: true}    
+);
+        if (vehicleDetails) {
+            // format all needed dates
+            vehicleDetails.rc_regn_upto =
+                formatDate(vehicleDetails.rc_regn_upto);
+
+            vehicleDetails.rc_tax_upto =
+                formatDate(vehicleDetails.rc_tax_upto);
+
+                vehicleDetails.rc_pucc_upto =
+                formatDate(vehicleDetails.rc_pucc_upto);
+
+            vehicleDetails.rc_fit_upto =
+                formatDate(vehicleDetails.rc_fit_upto);
+
+            vehicleDetails.rc_insurance_upto =
+                formatDate(vehicleDetails.rc_insurance_upto);
+
+            return res.status(200).send({ success: true, json:vehicleDetails});    
+        }else{
+
         const url = `${process.env.ulip_url}/${req.params.ulipIs}/${req.params.reqIs}`
 
         const response = await fetch(url, {
@@ -658,11 +701,9 @@ router.post("/ulipui/:ulipIs/:reqIs", fetchuser,fetchapiui, async (req, res) => 
                 'Content-Type': 'application/json',
                 'Accept': "application/json",
                 'Authorization': `Bearer ${req.authorization}`,
-                // 'Authorization': req.header('Authorization'),
 
             },
             body: JSON.stringify(req.body),
-            // agent: new https.Agent({ rejectUnauthorized: false }) // Add this line to disable SSL certificate verification
 
         })
 
@@ -693,11 +734,19 @@ router.post("/ulipui/:ulipIs/:reqIs", fetchuser,fetchapiui, async (req, res) => 
                 //     // return res.status(501).send({code:"501" , message: xmlString })
                 //     return res.status(401).send(json.response[0] )
 
+                if (json.response[0].response === 'Vehicle Details not Found') {
+
+                    return res.status(404).send({ code: "404", message:"Vehicle Details not Found" })
+
+                }else if(json.response[0].response === 'VAHAN_01 - 3rd party service is down!'){
+                    return res.status(401).send({ code: "404", message:"VAHAN_01 - 3rd party service is down!" })
+                }
                 var result1 = convert.xml2js(xmlString, { compact: true, spaces: 4 });
                 const vhdet = result1["VehicleDetails"]
 
                 // res.send({ success: true, vhdet })
                 json = await correctVahan(vhdet)
+                 await vahan_details.create(json);
 
             } catch (error) {
                 const urlArray = req.url.split("/")
@@ -733,8 +782,8 @@ router.post("/ulipui/:ulipIs/:reqIs", fetchuser,fetchapiui, async (req, res) => 
         ulipUiError(urlArray, mybody, respBody, appliName, mkey, req)
 
         res.send({ success: true, json })
-
-
+     
+     }
     } catch (error) {
         console.log(error.message)
         res.status(500).send({ code: 500, message: error.message })
@@ -775,6 +824,30 @@ router.post("/ulipxl/:ulipIs/:reqIs", upload.single('file'),fetchuser, fetchapiu
                     const url = `${process.env.ulip_url}/${req.params.ulipIs}/${req.params.reqIs}`;
     
                     try {
+                        const dbRecord = await vahan_details.findOne({
+                            where: { rc_regn_no: vehicleNumber },
+                            raw: true
+                        });
+                        if(dbRecord) {
+                                    console.log(`📌 Found in DB → No ULIP call for ${vehicleNumber}`);
+                                    // Prepare same response format
+                                    responses.push({
+                                        vehiclenumber: vehicleNumber,
+                                        OwnerName: dbRecord.rc_owner_name || 'Not Found',
+                                        VehiclePurchaseDate: dbRecord.rc_purchase_dt || 'Not Found',
+                                        InsurancePolicyNumbe: dbRecord.rc_insurance_policy_no || 'Not Found',
+                                        InsuracePolicyValidityUpto: dbRecord.rc_insurance_upto || 'Not Found',
+                                        PollutionCertificateNumber: dbRecord.rc_pucc_no || 'Not Found',
+                                        PollutionValidityUpto: dbRecord.rc_pucc_upto || 'Not Found',
+                                        RegistrationNumberValidity: dbRecord.rc_regn_upto || 'Not Found',
+                                        FitnessCertificateValidityUpto: dbRecord.rc_fit_upto || 'Not Found',
+                                        RoadTaxValidityUpto: dbRecord.rc_tax_upto || 'Not Found',
+                                        RegistrationDate: dbRecord.rc_regn_dt || 'Not Found',
+                                        VehicleMake: dbRecord.rc_maker_model || 'Not Found',
+                                        Valid: "Fit To Go"  // OR re-check validity if needed
+                                    });
+                                    continue; // Skip API call
+                            }
                         const response = await fetch(url, {
                             method: 'POST',
                             headers: {
@@ -858,6 +931,7 @@ router.post("/ulipxl/:ulipIs/:reqIs", upload.single('file'),fetchuser, fetchapiu
                                     VehicleMake: vehicleDetails.rc_maker_model||'VehicleMake Not Found',
                                     Valid: valid || 'Vehicle Data Not Found'
                                 });
+                                await vahan_details.create(vehicleDetails);
                             } catch (parseError) {
                                 console.error(`Error parsing XML for vehicle number ${vehicleNumber}:`, parseError);
                                 console.log("Response content:", json.response[0].response);

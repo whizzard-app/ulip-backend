@@ -7,6 +7,7 @@ const http = require("http");
 const { Server } = require("socket.io");
 const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
+require("./cronJob")();
 
 // Use Helmet with specific configurations
 app.use(helmet());
