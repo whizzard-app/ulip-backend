@@ -722,7 +722,7 @@ router.post("/ulipui/:ulipIs/:reqIs", fetchuser,fetchapiuixl, async (req, res) =
 
         });
         console.log("----------------LOGINresponse",logiresponse)
-        const resp_login = await response.json()
+        const resp_login = await logiresponse.json()
         console.log("----------------resp_login",resp_login)
         if(resp_login.error === 'false'){
             req.authorization = await resp_login.response.id
@@ -818,7 +818,7 @@ router.post("/ulipui/:ulipIs/:reqIs", fetchuser,fetchapiuixl, async (req, res) =
             }
             ulipUiError(urlArray, mybody, tempbodyOut, appliName, mkey, req)
             return res.status(404).send({ code: "404", message:"No such data exist" })
-        }else{
+        }else if(req.params.ulipIs === 'SARATHI' && json.response[0].response.dldetobj[0].dlobj != null){
             let dlobjs = json.response[0].response.dldetobj[0].dlobj
             await sarathi_details.create(dlobjs);
         }
