@@ -3,6 +3,7 @@ const https = require('https');
 const router = express.Router()
 const { ApiKeys } = require("../Models")
 const { vahan_details } = require("../Models")
+const {sarathi_details} = require("../Models")
 const { ApiLogs } = require("../Models")
 var jwt = require('jsonwebtoken');
 var bcrypt = require('bcryptjs');
@@ -670,7 +671,7 @@ const ulipUiError = async (urlArray, mybody, respBody, appliName, myKey, req) =>
 router.post("/ulipui/:ulipIs/:reqIs", fetchuser,fetchapiui, async (req, res) => {
 
     try {
-
+       if (req.params.ulipIs === "VAHAN") {
         const vehicleDetails = await vahan_details.findOne({ where: { rc_regn_no: req.body.vehiclenumber } ,raw: true}    
 );
         if (vehicleDetails) {
@@ -691,8 +692,15 @@ router.post("/ulipui/:ulipIs/:reqIs", fetchuser,fetchapiui, async (req, res) => 
                 formatDate(vehicleDetails.rc_insurance_upto);
 
             return res.status(200).send({ success: true, json:vehicleDetails});    
-        }else{
+        }
+    } 
 
+      if(req.params.ulipIs === "SARATHI") {
+        const dlDetails = await sarathi_details.findOne({ where: { dlLicno: req.body.dlnumber } ,raw: true}    );
+        if (dlDetails) {            
+            return res.status(200).send({ success: true, type:"DB",json:dlDetails});
+        }
+      }
         const url = `${process.env.ulip_url}/${req.params.ulipIs}/${req.params.reqIs}`
 
         const response = await fetch(url, {
@@ -773,6 +781,9 @@ router.post("/ulipui/:ulipIs/:reqIs", fetchuser,fetchapiui, async (req, res) => 
             }
             ulipUiError(urlArray, mybody, tempbodyOut, appliName, mkey, req)
             return res.status(404).send({ code: "404", message:"No such data exist" })
+        }else{
+            let dlobjs = json.response[0].response.dldetobj[0].dlobj
+            await sarathi_details.create(dlobjs);
         }
         const urlArray = req.url.split("/")
         urlArray.splice(0, 0, '')
@@ -781,9 +792,9 @@ router.post("/ulipui/:ulipIs/:reqIs", fetchuser,fetchapiui, async (req, res) => 
         const mkey = req.header("api-key")
         ulipUiError(urlArray, mybody, respBody, appliName, mkey, req)
 
-        res.send({ success: true, json })
+        res.send({ success: true, type:"api",json })
      
-     }
+    
     } catch (error) {
         console.log(error.message)
         res.status(500).send({ code: 500, message: error.message })
@@ -1046,6 +1057,13 @@ router.post("/ulipxl/:ulipIs/:reqIs", upload.single('file'),fetchuser, fetchapiu
             for (const row of data) {
                 let dob = row.dob
                 // Convert Excel serial date to dd-mm-yyyy format if necessary
+                const dlDetails = await sarathi_details.findOne({ where: { dlLicno: req.body.dlnumber } ,raw: true}    );
+                if (dlDetails) {            
+                    console.log(`📌 Found in DB → No ULIP call for DL Number ${row.dlnumber}`);
+                    responses.push({ dlnumber: row.dlnumber, DrivingLicenseValidityUpto: dlDetails.dlNtValdtoDt || 'Not Found', Message: 'SUCCESSFULL' });
+                    continue;
+                }
+
                 if (typeof dob === 'number') {
                     dob = excelSerialDateToJSDate(dob);
                 }

@@ -309,7 +309,7 @@ export class FetchulipComponent implements OnInit {
           this.outputObjCompleteVS = []
           let todayDate = new Date()
           let todayDateUnix = Number(Math.floor(todayDate.getTime() / 1000))
-
+          if(data.type === "api"){
           let mydata2 = mydata.response[0].response.dldetobj[0]
           let outputObjCompleteVSTemp: Array<{
             dt: string,
@@ -330,9 +330,30 @@ export class FetchulipComponent implements OnInit {
 
           ]
           this.outputObjCompleteVS.push(outputObjCompleteVSTemp)
+          }else if (data.type === "DB"){
+            let mydata2 = mydata
 
+          let outputObjCompleteVSTemp: Array<{
+            dt: string,
+            vl: any,
+            valid: any
+          }> = [];
+          console.log("my data2 is ", mydata2)
+          if(mydata2.dlobj === null){
+            console.log("it's an errro")
+          }
+          let dlExpDate = new Date(mydata2.dlNtValdtoDt)
+          let dlExpDateNum = Number(Math.floor(dlExpDate.getTime() / 1000))
+          console.log("My DL exp date is ", dlExpDate)
+          outputObjCompleteVSTemp = [
 
+            { dt: 'Driving license Number', vl: mydata2.dlLicno, valid: null },
+            { dt: 'Driving license Validity Upto', vl: mydata2.dlNtValdtoDt, valid: dlExpDateNum > todayDateUnix },
 
+          ]
+           this.outputObjCompleteVS.push(outputObjCompleteVSTemp)
+
+        }
         }
         // else if (this.selectedUlipArr === "FOIS") {
         //   // this.outputObjCompleteArr = []
