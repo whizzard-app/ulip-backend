@@ -18,7 +18,8 @@ var nodemailer = require("nodemailer");
 const fs = require("fs")
 const XLSXStyle = require('xlsx-js-style');
 const { body, validationResult } = require('express-validator');
-const fetchapiui = require("../middleware/fetchapiui");
+const {fetchapiui} = require("../middleware/fetchapiui");
+const {fetchapiuixl}= require("../middleware/fetchapiui");
 const fetch = require('node-fetch')
 const multer = require('multer');
 const xlsx = require('xlsx');
@@ -668,7 +669,7 @@ const ulipUiError = async (urlArray, mybody, respBody, appliName, myKey, req) =>
     const apiLogIs = await ApiLogs.create(newApiLog)
 }
 
-router.post("/ulipui/:ulipIs/:reqIs", fetchuser,fetchapiui, async (req, res) => {
+router.post("/ulipui/:ulipIs/:reqIs", fetchuser,fetchapiuixl, async (req, res) => {
 
     try {
        if (req.params.ulipIs === "VAHAN") {
@@ -701,6 +702,42 @@ router.post("/ulipui/:ulipIs/:reqIs", fetchuser,fetchapiui, async (req, res) => 
             return res.status(200).send({ success: true, type:"DB",json:dlDetails});
         }
       }
+       const login_body = {
+            username:process.env.ulip_username,
+            password:process.env.ulip_password
+        }
+
+        console.log("--------login_body",login_body)
+        console.log("--------process.env.ulip_login_url",process.env.ulip_login_url)
+
+        
+        const logiresponse = await fetch(process.env.ulip_login_url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify(login_body),
+            // agent: new https.Agent({ rejectUnauthorized: false }) // Add this line to disable SSL certificate verification
+
+        });
+        console.log("----------------LOGINresponse",logiresponse)
+        const resp_login = await response.json()
+        console.log("----------------resp_login",resp_login)
+        if(resp_login.error === 'false'){
+            req.authorization = await resp_login.response.id
+        }
+        else{
+            const urlArray = req.url.split("/")
+            urlArray.splice(0,0,'')
+            console.log("my url array is ", urlArray)
+            const mybody = req.body
+            const appliName = "[Ulip Interface Used]"
+            const mkey = "--"
+            delete resp_login.error
+            ulipUiError(urlArray, mybody, resp_login, appliName, mkey, req)
+            return res.status(401).send(resp_login)
+        }
         const url = `${process.env.ulip_url}/${req.params.ulipIs}/${req.params.reqIs}`
 
         const response = await fetch(url, {
