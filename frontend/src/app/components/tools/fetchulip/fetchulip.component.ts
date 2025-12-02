@@ -217,7 +217,7 @@ export class FetchulipComponent implements OnInit {
 
         // }
         debugger
-        if(data.responseStatus == null || data.responseStatus == undefined  || data.responseStatus == "" ){
+        if(data.response == null){
 
 let outputObjCompleteVSTemp: Array<{
             dt: string,
@@ -230,7 +230,7 @@ let outputObjCompleteVSTemp: Array<{
             ]
           this.outputObjCompleteVS.push(outputObjCompleteVSTemp)
           this.onLoading = false
-          return
+          
 
         }
 
