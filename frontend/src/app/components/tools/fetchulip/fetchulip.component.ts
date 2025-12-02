@@ -216,7 +216,23 @@ export class FetchulipComponent implements OnInit {
         //   mydata = data.json.response.json
 
         // }
-        
+        debugger
+        if(data.responseStatus == null || data.responseStatus == undefined  || data.responseStatus == "" ){
+
+let outputObjCompleteVSTemp: Array<{
+            dt: string,
+            vl: any,
+            valid: any
+          }> = [];
+            outputObjCompleteVSTemp = [
+            { dt: data.code, vl: data.message, valid: null },
+          
+            ]
+          this.outputObjCompleteVS.push(outputObjCompleteVSTemp)
+          this.onLoading = false
+          return
+
+        }
 
         if (this.selectedUlipArr === "VAHAN") {
           console.log("Inside teh vahan")
