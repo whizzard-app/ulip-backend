@@ -363,6 +363,23 @@ function formatDate(dateStr) {
     return `${day}-${month}-${year}`;
 }
 
+function formatRcDate(dateStr) {
+    if (!dateStr) return null;
+
+    const [day, month, year] = dateStr.split("-");
+
+    const date = new Date(year, month - 1, day);
+    if (isNaN(date)) return null;
+
+    const months = [
+        "Jan","Feb","Mar","Apr","May","Jun",
+        "Jul","Aug","Sep","Oct","Nov","Dec"
+    ];
+
+    return `${String(day).padStart(2, "0")}-${months[date.getMonth()]}-${year}`;
+}
+
+
 router.put("/toggle-api-key", fetchuser, [
     body("passKey", "API must be valid").isLength({ min: 1 }),
     body("isEnable", "API key toggle failed").isBoolean()
@@ -558,6 +575,30 @@ router.post("/ulip/v1.0.0/:ulipIs/:reqIs", fetchapi, async (req, res) => {
         const url = `${process.env.ulip_url}/${req.params.ulipIs}/${req.params.reqIs}`
         console.log("my url is ", url)
 
+        if(req.params.ulipIs === "VAHAN") {
+            const vehicleDetails = await vahan_details.findOne({ where: { rc_regn_no: req.body.vehiclenumber } ,raw: true});
+        if (vehicleDetails) {
+            // format all needed dates
+            vehicleDetails.rc_regn_upto =
+                formatDate(vehicleDetails.rc_regn_upto);
+
+            vehicleDetails.rc_tax_upto =
+                formatRcDate(vehicleDetails.rc_tax_upto);
+
+                vehicleDetails.rc_pucc_upto =
+                formatDate(vehicleDetails.rc_pucc_upto);
+
+            vehicleDetails.rc_fit_upto =
+                formatDate(vehicleDetails.rc_fit_upto);
+
+            vehicleDetails.rc_insurance_upto =
+                formatDate(vehicleDetails.rc_insurance_upto);
+
+            return res.status(200).send({ success: true, json:vehicleDetails});    
+        }
+    } 
+        
+
         const response = await fetch(url, {
             method: 'POST',
             headers: {
@@ -604,6 +645,8 @@ router.post("/ulip/v1.0.0/:ulipIs/:reqIs", fetchapi, async (req, res) => {
 
                 // res.send({ success: true, vhdet })
                 json = await correctVahan(vhdet)
+                await vahan_details.create(json);
+
 
             } catch (error) {
                 const urlArray = req.url.split("/")
@@ -681,7 +724,7 @@ router.post("/ulipui/:ulipIs/:reqIs", fetchuser,fetchapiuixl, async (req, res) =
                 formatDate(vehicleDetails.rc_regn_upto);
 
             vehicleDetails.rc_tax_upto =
-                formatDate(vehicleDetails.rc_tax_upto);
+                formatRcDate(vehicleDetails.rc_tax_upto);
 
                 vehicleDetails.rc_pucc_upto =
                 formatDate(vehicleDetails.rc_pucc_upto);
