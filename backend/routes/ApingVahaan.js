@@ -583,7 +583,9 @@ router.post("/ulip/v1.0.0/:ulipIs/:reqIs", fetchapi, async (req, res) => {
                 formatDate(vehicleDetails.rc_regn_upto);
 
             vehicleDetails.rc_tax_upto =
-                formatRcDate(vehicleDetails.rc_tax_upto);
+            vehicleDetails.rc_tax_upto === 'LTT'
+                ? 'LTT'
+                : formatRcDate(vehicleDetails.rc_tax_upto);
 
                 vehicleDetails.rc_pucc_upto =
                 formatDate(vehicleDetails.rc_pucc_upto);
@@ -724,7 +726,9 @@ router.post("/ulipui/:ulipIs/:reqIs", fetchuser,fetchapiuixl, async (req, res) =
                 formatDate(vehicleDetails.rc_regn_upto);
 
             vehicleDetails.rc_tax_upto =
-                formatRcDate(vehicleDetails.rc_tax_upto);
+            vehicleDetails.rc_tax_upto === 'LTT'
+                ? 'LTT'
+                : formatRcDate(vehicleDetails.rc_tax_upto);
 
                 vehicleDetails.rc_pucc_upto =
                 formatDate(vehicleDetails.rc_pucc_upto);
