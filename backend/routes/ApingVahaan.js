@@ -59,7 +59,28 @@ function getUlipResponse(json) {
   if (json.response.length === 0) return null;
   return json.response[0]?.response || null;
 }
+function normalizeDates(obj) {
+  const dateFields = [
+    'rc_regn_dt',
+    'rc_regn_upto',
+    'rc_purchase_dt',
+    'rc_fit_upto',
+    'rc_pucc_upto',
+    'rc_insurance_upto',
+    'rc_np_from',
+    'rc_np_upto',
+    'rc_permit_issue_dt',
+    'rc_permit_valid_from',
+    'rc_permit_valid_upto',
+    'rc_status_as_on'
+  ];
 
+  dateFields.forEach(field => {
+    obj[field] = parseUlipDate(obj[field]);
+  });
+
+  return obj;
+}
 // function parseDate(dateStr) {
 //     // Split the date string by '-'
 //     const parts = dateStr.split('-');
@@ -862,15 +883,19 @@ router.post("/ulipui/:ulipIs/:reqIs", fetchuser,fetchapiuixl, async (req, res) =
                 // res.send({ success: true, vhdet })
                 json = await correctVahan(vhdet)
                 console.log("corrected vahan is----------- ", json)
-                json.rc_regn_dt = parseUlipDate(json.rc_regn_dt);
-                json.rc_regn_upto = parseUlipDate(json.rc_regn_upto);
-                json.rc_purchase_dt = parseUlipDate(json.rc_purchase_dt);
-                json.rc_fit_upto = parseUlipDate(json.rc_fit_upto);
-                json.rc_pucc_upto = parseUlipDate(json.rc_pucc_upto);
-                json.rc_insurance_upto = parseUlipDate(json.rc_insurance_upto);
+                // json.rc_regn_dt = parseUlipDate(json.rc_regn_dt);
+                // json.rc_regn_upto = parseUlipDate(json.rc_regn_upto);
+                // json.rc_purchase_dt = parseUlipDate(json.rc_purchase_dt);
+                // json.rc_fit_upto = parseUlipDate(json.rc_fit_upto);
+                // json.rc_pucc_upto = parseUlipDate(json.rc_pucc_upto);
+                // json.rc_insurance_upto = parseUlipDate(json.rc_insurance_upto);
+                json = normalizeDates(json);
+                json.rc_financer = safeString(json.rc_financer);
                  await vahan_details.create(json);
 
             } catch (error) {
+                console.log("----  -error in vahan ulipui",error)
+                console.log(json.response[0],'-------------json.response[0]')
                 const urlArray = req.url.split("/")
                 const mybody = req.body
                 const appliName = req.applicationName
