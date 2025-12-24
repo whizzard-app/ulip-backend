@@ -853,7 +853,7 @@ router.post("/ulipui/:ulipIs/:reqIs", fetchuser,fetchapiuixl, async (req, res) =
                     error_type: 'INVALID_JSON_RESPONSE',
                     error_message: 'Invalid JSON response from ULIP VAHAN API',
                     request_payload: req.body,
-                    response_payload: json.response[0]
+                    response_payload: String(json.response[0])
                 });
                 ulipUiError(urlArray, mybody, tempJson, appliName, myKey, req)
                 return res.status(401).send(json.response[0])
@@ -1040,10 +1040,10 @@ router.post("/ulipxl/:ulipIs/:reqIs", upload.single('file'),fetchuser, fetchapiu
                                 console.log("Response content:", json.response[0].response);
                                 await api_error_logs_vahan.create({
                                         vehicle_number: vehicleNumber,
-                                        error_type: 'INVALID_JSON_RESPONSE',
-                                        error_message: parseError,
+                                        error_type: 'XML_PARSE_ERROR',
+                                        error_message: parseError.message || 'XML parsing failed',
                                         request_payload: { vehiclenumber: vehicleNumber },
-                                        response_payload: json.response[0].response
+                                        response_payload: String(json?.response?.[0]?.response || 'EMPTY_RESPONSE')
                                     });
                                     responses.push({
                                     vehiclenumber: vehicleNumber,
@@ -1065,11 +1065,11 @@ router.post("/ulipxl/:ulipIs/:reqIs", upload.single('file'),fetchuser, fetchapiu
                     } catch (fetchError) {
                         console.error(`Error fetching data for vehicle number ${vehicleNumber}:`, fetchError);
                         await api_error_logs_vahan.create({
-                            vehicle_number: vehicleNumber,
+                            vehicle_number: vehicleNumber, 
                             error_type: 'INVALID_JSON_RESPONSE',
                             error_message: 'Unexpected end of JSON input',
                             request_payload: { vehiclenumber: vehicleNumber },
-                            response_payload: fetchError
+                            response_payload: fetchError.message
                         });
                         responses.push({
                             vehiclenumber: vehicleNumber,

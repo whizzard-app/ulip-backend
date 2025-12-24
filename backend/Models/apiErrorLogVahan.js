@@ -6,7 +6,7 @@ module.exports = (sequelize, DataTypes) => {
       primaryKey: true
     },
 
-    vehicle_numbe: {                 // keeping same name as table
+    vehicle_number: {                 // keeping same name as table
       type: DataTypes.STRING(100)
     },
 
