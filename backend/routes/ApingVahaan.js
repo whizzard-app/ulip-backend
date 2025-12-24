@@ -892,8 +892,8 @@ router.post("/ulipui/:ulipIs/:reqIs", fetchuser,fetchapiuixl, async (req, res) =
                 json = normalizeDates(json);
                 json.rc_financer = String(json.rc_financer);
                  await vahan_details.create(json);
-                 vehicleDetails.rc_regn_upto =
-                formatDate(vehicleDetails.rc_regn_upto);
+                 json.rc_regn_upto =
+                formatDate(json.rc_regn_upto);
 
                     json.rc_tax_upto =
                     json.rc_tax_upto === 'LTT'
