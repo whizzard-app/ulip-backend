@@ -39,6 +39,26 @@ function excelSerialDateToJSDate(serial) {
     const day = ("0" + date.getDate()).slice(-2);
     return `${year}-${month}-${day}`;
 }
+function parseUlipDate(value) {
+  if (!value || typeof value !== 'string') return null;
+
+  // Handle DD-MMM-YYYY
+  let m = moment(value, 'DD-MMM-YYYY', true);
+  if (m.isValid()) return m.format('YYYY-MM-DD');
+
+  // Handle DD-MM-YYYY
+  m = moment(value, 'DD-MM-YYYY', true);
+  if (m.isValid()) return m.format('YYYY-MM-DD');
+
+  return null;
+}
+function getUlipResponse(json) {
+  if (!json) return null;
+  if (!Array.isArray(json.response)) return null;
+  if (json.response.length === 0) return null;
+  return json.response[0]?.response || null;
+}
+
 // function parseDate(dateStr) {
 //     // Split the date string by '-'
 //     const parts = dateStr.split('-');
@@ -823,6 +843,7 @@ router.post("/ulipui/:ulipIs/:reqIs", fetchuser,fetchapiuixl, async (req, res) =
         if (req.params.ulipIs === "VAHAN") {
             try {
                 const xmlString = json.response[0].response
+                console.log("my xml string is ------------------", xmlString)
                 // if (xmlString === "ULIPNICDC is not authorized to access Non-Transport vehicle data")
                 //     // return res.status(501).send({code:"501" , message: xmlString })
                 //     return res.status(401).send(json.response[0] )
@@ -839,6 +860,13 @@ router.post("/ulipui/:ulipIs/:reqIs", fetchuser,fetchapiuixl, async (req, res) =
 
                 // res.send({ success: true, vhdet })
                 json = await correctVahan(vhdet)
+                console.log("corrected vahan is----------- ", json)
+                json.rc_regn_dt = parseUlipDate(json.rc_regn_dt);
+                json.rc_regn_upto = parseUlipDate(json.rc_regn_upto);
+                json.rc_purchase_dt = parseUlipDate(json.rc_purchase_dt);
+                json.rc_fit_upto = parseUlipDate(json.rc_fit_upto);
+                json.rc_pucc_upto = parseUlipDate(json.rc_pucc_upto);
+                json.rc_insurance_upto = parseUlipDate(json.rc_insurance_upto);
                  await vahan_details.create(json);
 
             } catch (error) {
@@ -1069,7 +1097,7 @@ router.post("/ulipxl/:ulipIs/:reqIs", upload.single('file'),fetchuser, fetchapiu
                             error_type: 'INVALID_JSON_RESPONSE',
                             error_message: 'Unexpected end of JSON input',
                             request_payload: { vehiclenumber: vehicleNumber },
-                            response_payload: fetchError.message
+                            response_payload: String(fetchError)
                         });
                         responses.push({
                             vehiclenumber: vehicleNumber,
