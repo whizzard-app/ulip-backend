@@ -3,6 +3,7 @@ const https = require('https');
 const router = express.Router()
 const { ApiKeys } = require("../Models")
 const { vahan_details } = require("../Models")
+const {api_error_logs_vahan} = require("../Models")
 const {sarathi_details} = require("../Models")
 const { ApiLogs } = require("../Models")
 var jwt = require('jsonwebtoken');
@@ -847,6 +848,13 @@ router.post("/ulipui/:ulipIs/:reqIs", fetchuser,fetchapiuixl, async (req, res) =
                 const myKey = req.header("api-key")
                 let tempJson = json.response[0]
                 tempJson.code = "401"
+                await api_error_logs_vahan.create({
+                    vehicle_number: req.body.vehiclenumber,
+                    error_type: 'INVALID_JSON_RESPONSE',
+                    error_message: 'Invalid JSON response from ULIP VAHAN API',
+                    request_payload: req.body,
+                    response_payload: json.response[0]
+                });
                 ulipUiError(urlArray, mybody, tempJson, appliName, myKey, req)
                 return res.status(401).send(json.response[0])
             }
@@ -1030,7 +1038,14 @@ router.post("/ulipxl/:ulipIs/:reqIs", upload.single('file'),fetchuser, fetchapiu
                             } catch (parseError) {
                                 console.error(`Error parsing XML for vehicle number ${vehicleNumber}:`, parseError);
                                 console.log("Response content:", json.response[0].response);
-                                responses.push({
+                                await api_error_logs_vahan.create({
+                                        vehicle_number: vehicleNumber,
+                                        error_type: 'INVALID_JSON_RESPONSE',
+                                        error_message: parseError,
+                                        request_payload: { vehiclenumber: vehicleNumber },
+                                        response_payload: json.response[0].response
+                                    });
+                                    responses.push({
                                     vehiclenumber: vehicleNumber,
                                     OwnerName: 'Error parsing data',
                                     VehiclePurchaseDate: 'Error parsing data',
@@ -1049,6 +1064,13 @@ router.post("/ulipxl/:ulipIs/:reqIs", upload.single('file'),fetchuser, fetchapiu
                         }
                     } catch (fetchError) {
                         console.error(`Error fetching data for vehicle number ${vehicleNumber}:`, fetchError);
+                        await api_error_logs_vahan.create({
+                            vehicle_number: vehicleNumber,
+                            error_type: 'INVALID_JSON_RESPONSE',
+                            error_message: 'Unexpected end of JSON input',
+                            request_payload: { vehiclenumber: vehicleNumber },
+                            response_payload: fetchError
+                        });
                         responses.push({
                             vehiclenumber: vehicleNumber,
                             OwnerName: 'Error fetching data',
