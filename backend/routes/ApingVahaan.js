@@ -890,8 +890,24 @@ router.post("/ulipui/:ulipIs/:reqIs", fetchuser,fetchapiuixl, async (req, res) =
                 // json.rc_pucc_upto = parseUlipDate(json.rc_pucc_upto);
                 // json.rc_insurance_upto = parseUlipDate(json.rc_insurance_upto);
                 json = normalizeDates(json);
-                json.rc_financer = safeString(json.rc_financer);
+                json.rc_financer = String(json.rc_financer);
                  await vahan_details.create(json);
+                 vehicleDetails.rc_regn_upto =
+                formatDate(vehicleDetails.rc_regn_upto);
+
+                    json.rc_tax_upto =
+                    json.rc_tax_upto === 'LTT'
+                        ? 'LTT'
+                        : formatRcDate(json.rc_tax_upto);
+
+                        json.rc_pucc_upto =
+                        formatDate(json.rc_pucc_upto);
+
+                    json.rc_fit_upto =
+                        formatDate(json.rc_fit_upto);
+
+                    json.rc_insurance_upto =
+                        formatDate(json.rc_insurance_upto);
 
             } catch (error) {
                 console.log("----  -error in vahan ulipui",error)
