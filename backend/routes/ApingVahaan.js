@@ -738,6 +738,105 @@ router.post("/ulip/v1.0.0/:ulipIs/:reqIs", fetchapi, async (req, res) => {
 
 })
 
+router.post("/ulip/v2.0.0/:ulipIs/:reqIs", fetchapi, async (req, res) => {
+
+    try {
+        console.log("a9")
+        const url = `${process.env.ulip_url}/${req.params.ulipIs}/${req.params.reqIs}`
+        console.log("my url is ", url)
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': "application/json",
+                'Authorization': `Bearer ${req.authorization}`,
+                // 'Authorization': req.header('Authorization'),
+
+            },
+            body: JSON.stringify(req.body),
+            // agent: new https.Agent({ rejectUnauthorized: false }) // Add this line to disable SSL certificate verification
+
+        })
+        console.log("a10")
+
+        let json = await response.json()
+        
+        if (json.error === "true") {
+            const urlArray = req.url.split("/")
+            const mybody = req.body
+            const appliName = req.applicationName
+            const myKey = req.header("api-key")
+            delete json.error
+            ulipUiError(urlArray, mybody, json, appliName, myKey, req)
+            return res.send(json)
+        }
+
+
+
+        let respBody = {
+            code: json.code,
+            message: json.message
+        }
+
+        if (req.params.ulipIs === "VAHAN") {
+            try {
+                const xmlString = json.response[0].response
+                // if (xmlString === "ULIPNICDC is not authorized to access Non-Transport vehicle data")
+                //     // return res.status(501).send({code:"501" , message: xmlString })
+                //     return res.status(401).send(json.response[0] )
+
+                var result1 = convert.xml2js(xmlString, { compact: true, spaces: 4 });
+                const vhdet = result1["VehicleDetails"]
+
+                // res.send({ success: true, vhdet })
+                json = await correctVahan(vhdet)
+
+            } catch (error) {
+                const urlArray = req.url.split("/")
+                const mybody = req.body
+                const appliName = req.applicationName
+                const myKey = req.header("api-key")
+                let tempJson = json.response[0]
+                tempJson.code = "401"
+                ulipUiError(urlArray, mybody, tempJson, appliName, myKey, req)
+                return res.status(401).send(json.response[0])
+            }
+
+            console.log(json)
+
+        }
+
+        if (req.params.ulipIs === 'SARATHI' && json.response[0].response.dldetobj[0].dlobj === null) {
+            const urlArray = req.url.split("/")
+            const mybody = req.body
+            const appliName = req.applicationName
+            const mKey = req.header("api-key")
+            let tempbodyOut = {
+                code:"404",
+                message:"No such data exist"
+            }
+            ulipUiError(urlArray, mybody, tempbodyOut, appliName, mKey, req)
+            return res.status(404).send({ code: "404", message:"No such data exist" })
+        }
+
+        const urlArray = req.url.split("/")
+        const mybody = req.body
+        const appliName = req.applicationName
+        const mKey = req.header("api-key")
+        ulipUiError(urlArray, mybody, respBody, appliName, mKey, req)
+
+
+        res.send({ success: true, json })
+
+
+    } catch (error) {
+        console.log(error.message)
+        res.status(500).send({ code: "500", message: error.message })
+    }
+
+})
+
 
 const ulipUiError = async (urlArray, mybody, respBody, appliName, myKey, req) => {
 
@@ -1104,6 +1203,8 @@ router.post("/ulipxl/:ulipIs/:reqIs", upload.single('file'),fetchuser, fetchapiu
                                     VehicleMake: vehicleDetails.rc_maker_model||'VehicleMake Not Found',
                                     Valid: valid || 'Vehicle Data Not Found'
                                 });
+                                 vehicleDetails = normalizeDates(vehicleDetails);
+                                 vehicleDetails.rc_financer = String(vehicleDetails.rc_financer);
                                 await vahan_details.create(vehicleDetails);
                             } catch (parseError) {
                                 console.error(`Error parsing XML for vehicle number ${vehicleNumber}:`, parseError);
