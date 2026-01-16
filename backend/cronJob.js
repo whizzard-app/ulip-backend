@@ -2,7 +2,7 @@ const cron = require("node-cron");
 const fetch = require("node-fetch");
 const convert = require("xml-js");
 require("dotenv").config();
-
+const moment = require('moment');
 const { vahan_details } = require("./Models");
 const {cronJob_vahan_respones} = require("./Models");
 const { Sequelize,Op } = require("sequelize");
@@ -81,8 +81,9 @@ function normalizeDates(obj) {
 // ----------------------------------------------------------------------------
 
 async function updateVehicleDetails(row, authorization) {
+  let body = {};
   try {
-    const body = { vehiclenumber: row.rc_regn_no };
+    body = { vehiclenumber: row.rc_regn_no };
 
     const url = `${process.env.ulip_url}/VAHAN/01`;
 
@@ -104,15 +105,19 @@ async function updateVehicleDetails(row, authorization) {
     }
 
     const json = await response.json();
-    const xmlString = json?.response?.[0]?.response;
+    let xmlString = json?.response?.[0]?.response;
 
     if (!xmlString || xmlString.trim() === "") {
       console.warn("⚠ Empty XML for", row.rc_regn_no);
       return false;
     }
 
+    // Clean XML (remove junk before <)
+    xmlString = xmlString.trim();
+    xmlString = xmlString.substring(xmlString.indexOf("<"));
+
     const result = convert.xml2js(xmlString, { compact: true });
-    const vahanObj = result["VehicleDetails"];
+    const vahanObj = result?.VehicleDetails;
 
     if (!vahanObj) {
       console.warn("⚠ Parsed XML empty for", row.rc_regn_no);
@@ -122,37 +127,49 @@ async function updateVehicleDetails(row, authorization) {
     let updatedData = correctVahan(vahanObj);
     updatedData = normalizeDates(updatedData);
     updatedData.rc_financer = String(updatedData.rc_financer);
+
     await vahan_details.update(
       { ...updatedData },
       { where: { rc_regn_no: row.rc_regn_no } }
     );
-    const findRcnNo = await cronJob_vahan_respones.findOne({ where: { rc_regn_no: row.rc_regn_no }, raw: true });  
-    if(findRcnNo){
+
+    const findRcnNo = await cronJob_vahan_respones.findOne({
+      where: { rc_regn_no: row.rc_regn_no },
+      raw: true
+    });
+
+    if (findRcnNo) {
       await cronJob_vahan_respones.update({
         responseOfUlipApi: JSON.stringify(updatedData),
         reqPlayLoad: JSON.stringify(body),
         TIMESTAMP: new Date()
       }, { where: { rc_regn_no: row.rc_regn_no } });
+
       console.log(`Updated Successfully → ${row.rc_regn_no} (Existing Record Updated)`);
-    }else{
-     await cronJob_vahan_respones.create({
-      rc_regn_no: row.rc_regn_no,
-      responseOfUlipApi: JSON.stringify(updatedData),
-      reqPlayLoad: JSON.stringify(body),
-      TIMESTAMP: new Date()
-    });
-  }
-    console.log(`Updated Successfully → ${row.rc_regn_no}`);
+
+    } else {
+      await cronJob_vahan_respones.create({
+        rc_regn_no: row.rc_regn_no,
+        responseOfUlipApi: JSON.stringify(updatedData),
+        reqPlayLoad: JSON.stringify(body),
+        TIMESTAMP: new Date()
+      });
+    }
+
     return true;
 
   } catch (err) {
+
     console.error(`Exception updating ${row.rc_regn_no}:`, err.message);
+
+    // ❌ NEVER stringify error object
     await cronJob_vahan_respones.create({
       rc_regn_no: row.rc_regn_no,
-      responseOfUlipApi: JSON.stringify(err),
+      responseOfUlipApi: err.message,   
       reqPlayLoad: JSON.stringify(body),
       TIMESTAMP: new Date()
     });
+
     return false;
   }
 }
