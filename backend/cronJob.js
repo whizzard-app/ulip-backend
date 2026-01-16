@@ -39,6 +39,20 @@ function correctVahan(jsval) {
   return tempJs;
 }
 
+function parseUlipDate(value) {
+  if (!value || typeof value !== 'string') return null;
+
+  // Handle DD-MMM-YYYY
+  let m = moment(value, 'DD-MMM-YYYY', true);
+  if (m.isValid()) return m.format('YYYY-MM-DD');
+
+  // Handle DD-MM-YYYY
+  m = moment(value, 'DD-MM-YYYY', true);
+  if (m.isValid()) return m.format('YYYY-MM-DD');
+
+  return null;
+}
+
 function normalizeDates(obj) {
   const dateFields = [
     'rc_regn_dt',
