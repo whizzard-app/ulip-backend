@@ -5,7 +5,7 @@ require("dotenv").config();
 
 const { vahan_details } = require("./Models");
 const {cronJob_vahan_respones} = require("./Models");
-const { Op } = require("sequelize");
+const { Sequelize,Op } = require("sequelize");
 
 // ----------------------------------------------------------------------------
 // UTILITY FUNCTIONS
@@ -39,6 +39,29 @@ function correctVahan(jsval) {
   return tempJs;
 }
 
+function normalizeDates(obj) {
+  const dateFields = [
+    'rc_regn_dt',
+    'rc_regn_upto',
+    'rc_purchase_dt',
+    'rc_fit_upto',
+    'rc_pucc_upto',
+    'rc_insurance_upto',
+    'rc_np_from',
+    'rc_np_upto',
+    'rc_permit_issue_dt',
+    'rc_permit_valid_from',
+    'rc_permit_valid_upto',
+    'rc_status_as_on'
+  ];
+
+  dateFields.forEach(field => {
+    obj[field] = parseUlipDate(obj[field]);
+  });
+
+  return obj;
+}
+
 // ----------------------------------------------------------------------------
 // UPDATE VEHICLE DETAILS
 // ----------------------------------------------------------------------------
@@ -49,7 +72,7 @@ async function updateVehicleDetails(row, authorization) {
 
     const url = `${process.env.ulip_url}/VAHAN/01`;
 
-    console.log(`🔗 Calling VAHAN → ${row.rc_regn_no}`);
+    console.log(`Calling VAHAN → ${row.rc_regn_no}`);
 
     const response = await fetch(url, {
       method: "POST",
@@ -62,7 +85,7 @@ async function updateVehicleDetails(row, authorization) {
     });
 
     if (!response.ok) {
-      console.warn(`❌ VAHAN Error ${response.status} for ${row.rc_regn_no}`);
+      console.warn(`VAHAN Error ${response.status} for ${row.rc_regn_no}`);
       return false;
     }
 
@@ -82,9 +105,9 @@ async function updateVehicleDetails(row, authorization) {
       return false;
     }
 
-    const updatedData = correctVahan(vahanObj);
-
-
+    let updatedData = correctVahan(vahanObj);
+    updatedData = normalizeDates(updatedData);
+    updatedData.rc_financer = String(updatedData.rc_financer);
     await vahan_details.update(
       { ...updatedData },
       { where: { rc_regn_no: row.rc_regn_no } }
@@ -96,7 +119,7 @@ async function updateVehicleDetails(row, authorization) {
         reqPlayLoad: JSON.stringify(body),
         TIMESTAMP: new Date()
       }, { where: { rc_regn_no: row.rc_regn_no } });
-      console.log(`✅ Updated Successfully → ${row.rc_regn_no} (Existing Record Updated)`);
+      console.log(`Updated Successfully → ${row.rc_regn_no} (Existing Record Updated)`);
     }else{
      await cronJob_vahan_respones.create({
       rc_regn_no: row.rc_regn_no,
@@ -105,11 +128,11 @@ async function updateVehicleDetails(row, authorization) {
       TIMESTAMP: new Date()
     });
   }
-    console.log(`✅ Updated Successfully → ${row.rc_regn_no}`);
+    console.log(`Updated Successfully → ${row.rc_regn_no}`);
     return true;
 
   } catch (err) {
-    console.error(`❌ Exception updating ${row.rc_regn_no}:`, err.message);
+    console.error(`Exception updating ${row.rc_regn_no}:`, err.message);
     await cronJob_vahan_respones.create({
       rc_regn_no: row.rc_regn_no,
       responseOfUlipApi: JSON.stringify(err),
@@ -129,7 +152,7 @@ module.exports = () => {
     "0 6 * * *", // every day at 6 AM
     async () => {
       console.log(
-        "🚀 Cron started at",
+        "Cron started at",
         new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })
       );
 
@@ -154,7 +177,7 @@ module.exports = () => {
           raw: true
         });
 
-        console.log(`🔍 Vehicles expiring soon: ${candidates.length}`);
+        console.log(`Vehicles expiring soon: ${candidates.length}`);
 
         if (candidates.length === 0) return;
 
@@ -181,7 +204,7 @@ module.exports = () => {
         if (loginJson.error === "false") {
           authorization = loginJson.response.id;
         } else {
-          console.log("❌ ULIP Login Failed");
+          console.log("ULIP Login Failed");
           return;
         }
 
@@ -194,7 +217,7 @@ module.exports = () => {
           await new Promise(r => setTimeout(r, 1000));
         }
       } catch (err) {
-        console.error("❌ Cron Error:", err.message);
+        console.error("Cron Error:", err.message);
       }
     },
     { timezone: "Asia/Kolkata" }
