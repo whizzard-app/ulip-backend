@@ -4,6 +4,7 @@ const convert = require("xml-js");
 require("dotenv").config();
 
 const { vahan_details } = require("./Models");
+const {cronJob_vahan_respones} = require("./Models");
 const { Op } = require("sequelize");
 
 // ----------------------------------------------------------------------------
@@ -83,16 +84,38 @@ async function updateVehicleDetails(row, authorization) {
 
     const updatedData = correctVahan(vahanObj);
 
+
     await vahan_details.update(
-      { ...updatedData, last_attempt: new Date() },
+      { ...updatedData },
       { where: { rc_regn_no: row.rc_regn_no } }
     );
-
+    const findRcnNo = await cronJob_vahan_respones.findOne({ where: { rc_regn_no: row.rc_regn_no }, raw: true });  
+    if(findRcnNo){
+      await cronJob_vahan_respones.update({
+        responseOfUlipApi: JSON.stringify(updatedData),
+        reqPlayLoad: JSON.stringify(body),
+        TIMESTAMP: new Date()
+      }, { where: { rc_regn_no: row.rc_regn_no } });
+      console.log(`✅ Updated Successfully → ${row.rc_regn_no} (Existing Record Updated)`);
+    }else{
+     await cronJob_vahan_respones.create({
+      rc_regn_no: row.rc_regn_no,
+      responseOfUlipApi: JSON.stringify(updatedData),
+      reqPlayLoad: JSON.stringify(body),
+      TIMESTAMP: new Date()
+    });
+  }
     console.log(`✅ Updated Successfully → ${row.rc_regn_no}`);
     return true;
 
   } catch (err) {
     console.error(`❌ Exception updating ${row.rc_regn_no}:`, err.message);
+    await cronJob_vahan_respones.create({
+      rc_regn_no: row.rc_regn_no,
+      responseOfUlipApi: JSON.stringify(err),
+      reqPlayLoad: JSON.stringify(body),
+      TIMESTAMP: new Date()
+    });
     return false;
   }
 }
@@ -118,7 +141,10 @@ module.exports = () => {
         const candidates = await vahan_details.findAll({
           where: {
             [Op.or]: [
-              { rc_tax_upto: { [Op.between]: [start, end] } },
+              Sequelize.where(
+                Sequelize.fn('STR_TO_DATE', Sequelize.col('rc_tax_upto'), '%d-%m-%Y'),
+                { [Op.between]: [start, end] }
+              ),
               { rc_fit_upto: { [Op.between]: [start, end] } },
               { rc_pucc_upto: { [Op.between]: [start, end] } },
               { rc_insurance_upto: { [Op.between]: [start, end] } },
@@ -163,19 +189,7 @@ module.exports = () => {
         // UPDATE VEHICLES
         // ------------------------------------------------------------------
         for (const row of candidates) {
-          // Skip vehicles checked recently (within last 24 hours)
-          if (row.last_attempt) {
-            const last = new Date(row.last_attempt);
-            const now = new Date();
-
-            if (now - last < 24 * 60 * 60 * 1000) {
-              console.log(`⏭ Skip ${row.rc_regn_no} (checked recently)`);
-              continue;
-            }
-          }
-
           const success = await updateVehicleDetails(row, authorization);
-
           // Delay between calls (important)
           await new Promise(r => setTimeout(r, 1000));
         }

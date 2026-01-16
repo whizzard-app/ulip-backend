@@ -1102,6 +1102,37 @@ router.post("/ulipxl/:ulipIs/:reqIs", upload.single('file'),fetchuser, fetchapiu
                         });
                         if(dbRecord) {
                                     console.log(`📌 Found in DB → No ULIP call for ${vehicleNumber}`);
+                                    let rc_tax_upto = null;
+                                    if (dbRecord.rc_tax_upto) {
+                                    if (dbRecord.rc_tax_upto === 'LTT') {
+                                        rc_tax_upto = new Date();
+                                        rc_tax_upto.setFullYear(rc_tax_upto.getFullYear() + 50);
+                                    } 
+                                    else if (/^\d{2}-\d{2}-\d{4}$/.test(dbRecord.rc_tax_upto)) {
+                                        // DD-MM-YYYY
+                                        const [dd, mm, yyyy] = dbRecord.rc_tax_upto.split('-');
+                                        rc_tax_upto = new Date(yyyy, mm - 1, dd);
+                                    } 
+                                    else {
+                                        // ISO format (YYYY-MM-DD)
+                                        const temp = new Date(dbRecord.rc_tax_upto);
+                                        rc_tax_upto = isNaN(temp) ? null : temp;
+                                    }
+                                    }
+                                    // const rc_tax_upto = dbRecord.rc_tax_upto ? new Date(dbRecord.rc_tax_upto) : null;
+                                    const rc_fit_upto = dbRecord.rc_fit_upto ? new Date(dbRecord.rc_fit_upto) : null;
+                                    const rc_pucc_upto = dbRecord.rc_pucc_upto ? new Date(dbRecord.rc_pucc_upto) : null;
+                                    const rc_insurance_upto = dbRecord.rc_insurance_upto ? new Date(dbRecord.rc_insurance_upto) : null;
+                                    const rc_regn_upto = dbRecord.rc_regn_upto ? new Date(dbRecord.rc_regn_upto) : null;
+
+                                const valid = (
+                                        rc_tax_upto && rc_fit_upto && rc_pucc_upto && rc_insurance_upto && rc_regn_upto &&
+                                        rc_tax_upto > currentDate &&
+                                        rc_fit_upto > currentDate &&
+                                        rc_pucc_upto > currentDate &&
+                                        rc_insurance_upto > currentDate &&
+                                        rc_regn_upto > currentDate
+                                ) ? "Fit To Go" : "Not Fit To Go";
                                     // Prepare same response format
                                     responses.push({
                                         vehiclenumber: vehicleNumber,
@@ -1116,7 +1147,7 @@ router.post("/ulipxl/:ulipIs/:reqIs", upload.single('file'),fetchuser, fetchapiu
                                         RoadTaxValidityUpto: dbRecord.rc_tax_upto || 'Not Found',
                                         RegistrationDate: dbRecord.rc_regn_dt || 'Not Found',
                                         VehicleMake: dbRecord.rc_maker_model || 'Not Found',
-                                        Valid: "Fit To Go"  // OR re-check validity if needed
+                                        Valid: valid // OR re-check validity if needed
                                     });
                                     continue; // Skip API call
                             }
