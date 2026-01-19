@@ -690,8 +690,25 @@ router.post("/ulip/v1.0.0/:ulipIs/:reqIs", fetchapi, async (req, res) => {
 
                 // res.send({ success: true, vhdet })
                 json = await correctVahan(vhdet)
+                 json = normalizeDates(json);
+                json.rc_financer = String(json.rc_financer)
                 await vahan_details.create(json);
+                json.rc_regn_upto =
+                formatDate(json.rc_regn_upto);
 
+                    json.rc_tax_upto =
+                    json.rc_tax_upto === 'LTT'
+                        ? 'LTT'
+                        : formatRcDate(json.rc_tax_upto);
+
+                        json.rc_pucc_upto =
+                        formatDate(json.rc_pucc_upto);
+
+                    json.rc_fit_upto =
+                        formatDate(json.rc_fit_upto);
+
+                    json.rc_insurance_upto =
+                        formatDate(json.rc_insurance_upto);
 
             } catch (error) {
                 const urlArray = req.url.split("/")
