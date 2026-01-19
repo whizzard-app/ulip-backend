@@ -129,7 +129,7 @@ async function updateVehicleDetails(row, authorization) {
     updatedData.rc_financer = String(updatedData.rc_financer);
 
     await vahan_details.update(
-      { ...updatedData },
+      { ...updatedData , updated_at: new Date()},
       { where: { rc_regn_no: row.rc_regn_no } }
     );
 

@@ -692,7 +692,7 @@ router.post("/ulip/v1.0.0/:ulipIs/:reqIs", fetchapi, async (req, res) => {
                 json = await correctVahan(vhdet)
                  json = normalizeDates(json);
                 json.rc_financer = String(json.rc_financer)
-                await vahan_details.create(json);
+                await vahan_details.create({...json,created_at: new Date()});
                 json.rc_regn_upto =
                 formatDate(json.rc_regn_upto);
 
@@ -812,9 +812,12 @@ router.post("/ulip/v2.0.0/:ulipIs/:reqIs", fetchapi, async (req, res) => {
                 json.rc_financer = String(json.rc_financer)
                 const vehicleDetails = await vahan_details.findOne({ where: { rc_regn_no: json.rc_regn_no } ,raw: true}    );
                 if (!vehicleDetails) {
-                    await vahan_details.create(json);
+                await vahan_details.create({...json,created_at: new Date()});
                 } else {
-                    await vahan_details.update(json, { where: { rc_regn_no: json.rc_regn_no } });
+                    await vahan_details.update({ ...json, updated_at: new Date()},
+                                                {
+                                                    where: { rc_regn_no: json.rc_regn_no }
+                                             });
                 }
                 json.rc_regn_upto =
                 formatDate(json.rc_regn_upto);
@@ -1031,7 +1034,10 @@ router.post("/ulipui/:ulipIs/:reqIs", fetchuser,fetchapiui, async (req, res) => 
                 // json.rc_insurance_upto = parseUlipDate(json.rc_insurance_upto);
                 json = normalizeDates(json);
                 json.rc_financer = String(json.rc_financer);
-                 await vahan_details.create(json);
+                 await vahan_details.create({
+                      ...json,
+                       created_at: new Date()
+                       });
                  json.rc_regn_upto =
                 formatDate(json.rc_regn_upto);
 
@@ -1277,7 +1283,7 @@ router.post("/ulipxl/:ulipIs/:reqIs", upload.single('file'),fetchuser, fetchapiu
                                 });
                                  vehicleDetails = normalizeDates(vehicleDetails);
                                  vehicleDetails.rc_financer = String(vehicleDetails.rc_financer);
-                                await vahan_details.create(vehicleDetails);
+                                await vahan_details.create({...vehicleDetails,created_at: new Date()});
                             } catch (parseError) {
                                 console.error(`Error parsing XML for vehicle number ${vehicleNumber}:`, parseError);
                                 console.log("Response content:", json.response[0].response);

@@ -100,7 +100,9 @@ module.exports = (sequelize, DataTypes) => {
     rc_goods_tax: { type: DataTypes.JSON },
 
     rc_no_of_axle: { type: DataTypes.INTEGER },
-    rc_tax_mode: { type: DataTypes.STRING }
+    rc_tax_mode: { type: DataTypes.STRING },
+    created_at: { type: DataTypes.DATE },
+    updated_at: { type: DataTypes.DATE }
   }, {
     timestamps: false,
     freezeTableName: true
