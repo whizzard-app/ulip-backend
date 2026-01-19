@@ -284,9 +284,17 @@ let outputObjCompleteVSTemp: Array<{
           if (rcFitDate < todayDateUnix) {
             this.VahanUnfitList.push("RC Fit")
           }
-          if (rcTaxDate < todayDateUnix) {
-            this.VahanUnfitList.push("RC Tax")
-          }
+          // if (rcTaxDate < todayDateUnix) {
+          //   this.VahanUnfitList.push("RC Tax")
+          // }
+          if (
+              mydata.rc_tax_upto &&
+              mydata.rc_tax_upto !== 'LTT' &&
+              rcTaxDate &&
+              rcTaxDate < todayDateUnix
+            ) {
+              this.VahanUnfitList.push("RC Tax");
+            }
           if (rcInsuDate < todayDateUnix) {
             this.VahanUnfitList.push("RC Insurance")
           }
@@ -314,7 +322,8 @@ let outputObjCompleteVSTemp: Array<{
             { dt: 'Pollution Certificate Number', vl: mydata.rc_pucc_no, valid: null },
             { dt: 'Pollution Validity Upto', vl: mydata.rc_pucc_upto, valid: rcPuccDate > todayDateUnix },
             { dt: 'Fitness Certificate Validity Upto', vl: mydata.rc_fit_upto, valid: rcFitDate>todayDateUnix },
-            { dt: 'Road Tax Validity Upto', vl: mydata.rc_tax_upto, valid: rcTaxDate > todayDateUnix },
+            // { dt: 'Road Tax Validity Upto', vl: mydata.rc_tax_upto, valid: rcTaxDate > todayDateUnix },
+            {dt: 'Road Tax Validity Upto',vl: mydata.rc_tax_upto,valid:mydata.rc_tax_upto === 'LTT'? true: rcTaxDate? rcTaxDate > todayDateUnix: false},
             { dt: 'Registration Date', vl: mydata.rc_regn_dt, valid: null },
             { dt: 'Vehicle Make', vl: mydata.rc_maker_model, valid: null },
           ]
