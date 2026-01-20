@@ -254,5 +254,79 @@ module.exports = () => {
     { timezone: "Asia/Kolkata" }
   );
 
-  console.log("Cron Scheduled: Every day at 6:00 AM IST");
+  // console.log("Cron Scheduled: Every day at 6:00 AM IST");
+  cron.schedule(
+  "0 17 * * *", // every day at 5 PM
+  async () => {
+    console.log(
+      "Expired vehicle cron started at",
+      new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })
+    );
+
+    try {
+      const today = startOfToday();
+
+      const expiredVehicles = await vahan_details.findAll({
+            where: {
+              [Op.or]: [
+                { rc_fit_upto: { [Op.lt]: today } },
+                { rc_pucc_upto: { [Op.lt]: today } },
+                { rc_insurance_upto: { [Op.lt]: today } },
+                { rc_regn_upto: { [Op.lt]: today } },
+                Sequelize.where(
+                  Sequelize.fn('STR_TO_DATE', Sequelize.col('rc_tax_upto'), '%d-%m-%Y'),
+                  { [Op.lt]: today }
+                )
+              ]
+            },
+            raw: true
+          });
+
+
+      console.log(`Expired vehicles count: ${expiredVehicles.length}`);
+
+      if (expiredVehicles.length === 0) return;
+        // ------------------------------------------------------------------
+        // LOGIN TO ULIP
+        // ------------------------------------------------------------------
+        const login_body = {
+          username: process.env.ulip_username,
+          password: process.env.ulip_password
+        };
+
+        const loginResp = await fetch(process.env.ulip_login_url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json"
+          },
+          body: JSON.stringify(login_body)
+        });
+
+        const loginJson = await loginResp.json();
+        let authorization = "";
+
+        if (loginJson.error === "false") {
+          authorization = loginJson.response.id;
+        } else {
+          console.log("ULIP Login Failed");
+          return;
+        }
+
+
+      for (const row of expiredVehicles) {
+        const success = await updateVehicleDetails(row, authorization);
+        await new Promise(r => setTimeout(r, 1000));
+      }
+
+    } catch (err) {
+      console.error("5 PM Cron Error:", err.message);
+    }
+  },
+  { timezone: "Asia/Kolkata" }
+);
+
+// console.log("Cron Scheduled: Every day at 5:00 PM IST");
+
 };
+
